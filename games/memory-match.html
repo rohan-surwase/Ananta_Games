@@ -1,0 +1,249 @@
+<!-- GAME_INFO
+title: Memory Match
+description: Flip cards and find every matching pair before you run out of patience.
+category: Puzzle
+icon: 🧠
+featured: false
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Match — Ananta Games</title>
+<style>
+  :root{
+    --primary:#8B5CF6; --secondary:#06B6D4; --accent:#F59E0B;
+    --bg:#0b0b14; --surface: rgba(255,255,255,0.05); --border: rgba(255,255,255,0.09);
+    --text:#f1f0f8; --text-soft:#a8a6bd;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; min-height:100vh; background:var(--bg); color:var(--text);
+    font-family:'Segoe UI', system-ui, sans-serif;
+    display:flex; flex-direction:column; align-items:center; padding:20px;
+  }
+  a.back{
+    align-self:flex-start; color:var(--text-soft); text-decoration:none; font-size:14px;
+    margin-bottom:14px; padding:8px 14px; border:1px solid var(--border); border-radius:999px;
+    background:var(--surface);
+  }
+  a.back:hover{ color:var(--text); }
+  h1{ margin:0 0 6px; font-size:26px; }
+  p.sub{ color:var(--text-soft); margin:0 0 18px; font-size:13.5px; }
+
+  .hud{ display:flex; gap:16px; margin-bottom:18px; font-family:'Consolas', monospace; font-size:14px; }
+  .hud span{ background:var(--surface); border:1px solid var(--border); padding:6px 14px; border-radius:10px; }
+  .hud b{ color:var(--accent); }
+
+  #grid{
+    display:grid;
+    grid-template-columns: repeat(4, 76px);
+    grid-gap: 10px;
+  }
+  .card{
+    width:76px; height:76px;
+    border-radius:12px;
+    cursor:pointer;
+    perspective: 600px;
+  }
+  .card .inner{
+    position:relative; width:100%; height:100%;
+    transform-style: preserve-3d;
+    transition: transform .35s ease;
+  }
+  .card.flipped .inner, .card.matched .inner{ transform: rotateY(180deg); }
+  .face{
+    position:absolute; inset:0;
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:30px;
+    backface-visibility:hidden;
+  }
+  .face.back{
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+  }
+  .face.front{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transform: rotateY(180deg);
+  }
+  .card.matched .face.front{ background: rgba(245,158,11,0.18); border-color: var(--accent); }
+
+  .controls{ margin-top:20px; }
+  button.ctrl{
+    background:linear-gradient(120deg, var(--primary), var(--secondary));
+    color:#fff; border:none; font-weight:700; padding:10px 18px; border-radius:999px;
+    cursor:pointer; font-size:14px;
+  }
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(5,5,10,0.85);
+    display:none; align-items:center; justify-content:center; flex-direction:column; gap:14px;
+    text-align:center; padding:20px;
+  }
+  .overlay.show{ display:flex; }
+  .overlay h2{ font-size:28px; margin:0; }
+  .overlay p{ color:var(--text-soft); margin:0; }
+
+  @media (max-width:420px){
+    #grid{ grid-template-columns: repeat(4, 66px); }
+    .card{ width:66px; height:66px; }
+  }
+</style>
+</head>
+<body>
+  <a class="back" href="../index.html">← Back to Ananta Games</a>
+  <h1>🧠 Memory Match</h1>
+  <p class="sub">Flip two cards at a time. Match all 8 pairs in as few moves as possible.</p>
+
+  <div class="hud">
+    <span>Moves: <b id="moves">0</b></span>
+    <span>Pairs: <b id="pairs">0</b>/8</span>
+    <span>Best: <b id="best">—</b></span>
+  </div>
+
+  <div id="grid" role="grid" aria-label="Memory match board"></div>
+
+  <div class="controls">
+    <button class="ctrl" id="restartBtn">↺ New Game</button>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <h2>🎉 Solved!</h2>
+    <p id="overlayText">You matched all pairs.</p>
+    <button class="ctrl" id="playAgainBtn">Play Again</button>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  var ICONS = ["🍄","🚀","🐙","🎲","🍕","🌵","🦊","🎧"];
+  var STORAGE_KEY = "ananta_memory_best";
+
+  var grid = document.getElementById("grid");
+  var movesEl = document.getElementById("moves");
+  var pairsEl = document.getElementById("pairs");
+  var bestEl = document.getElementById("best");
+  var overlay = document.getElementById("overlay");
+  var overlayText = document.getElementById("overlayText");
+
+  var deck, flipped, matchedCount, moves, lockBoard;
+
+  var best = null;
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    best = raw ? parseInt(raw, 10) : null;
+  } catch(e){ best = null; }
+  bestEl.textContent = best !== null && !isNaN(best) ? best : "—";
+
+  function shuffle(arr){
+    for(var i = arr.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  function buildDeck(){
+    var pairs = ICONS.concat(ICONS).map(function(icon, idx){
+      return { id: idx, icon: icon, key: icon };
+    });
+    return shuffle(pairs);
+  }
+
+  function render(){
+    grid.innerHTML = "";
+    deck.forEach(function(card){
+      var el = document.createElement("div");
+      el.className = "card";
+      el.setAttribute("data-id", card.id);
+      el.setAttribute("role", "button");
+      el.setAttribute("tabindex", "0");
+      el.setAttribute("aria-label", "Memory card, hidden");
+      el.innerHTML =
+        '<div class="inner">' +
+          '<div class="face back" aria-hidden="true">❔</div>' +
+          '<div class="face front" aria-hidden="true">' + card.icon + '</div>' +
+        '</div>';
+      el.addEventListener("click", function(){ handleFlip(card.id, el); });
+      el.addEventListener("keydown", function(e){
+        if(e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          handleFlip(card.id, el);
+        }
+      });
+      grid.appendChild(el);
+    });
+  }
+
+  function handleFlip(id, el){
+    if(lockBoard) return;
+    if(el.classList.contains("flipped") || el.classList.contains("matched")) return;
+    if(flipped.length === 2) return;
+
+    el.classList.add("flipped");
+    flipped.push({ id: id, el: el });
+
+    if(flipped.length === 2){
+      moves += 1;
+      movesEl.textContent = String(moves);
+      checkMatch();
+    }
+  }
+
+  function checkMatch(){
+    var a = flipped[0], b = flipped[1];
+    var cardA = deck[a.id], cardB = deck[b.id];
+
+    if(cardA.key === cardB.key){
+      a.el.classList.add("matched");
+      b.el.classList.add("matched");
+      matchedCount += 1;
+      pairsEl.textContent = String(matchedCount);
+      flipped = [];
+      if(matchedCount === ICONS.length){
+        finishGame();
+      }
+    } else {
+      lockBoard = true;
+      setTimeout(function(){
+        a.el.classList.remove("flipped");
+        b.el.classList.remove("flipped");
+        flipped = [];
+        lockBoard = false;
+      }, 700);
+    }
+  }
+
+  function finishGame(){
+    if(best === null || isNaN(best) || moves < best){
+      best = moves;
+      bestEl.textContent = String(best);
+      try { localStorage.setItem(STORAGE_KEY, String(best)); } catch(e){ /* ignore */ }
+    }
+    overlayText.textContent = "Solved in " + moves + " moves.";
+    overlay.classList.add("show");
+  }
+
+  function startGame(){
+    overlay.classList.remove("show");
+    deck = buildDeck();
+    flipped = [];
+    matchedCount = 0;
+    moves = 0;
+    lockBoard = false;
+    movesEl.textContent = "0";
+    pairsEl.textContent = "0";
+    render();
+  }
+
+  document.getElementById("restartBtn").addEventListener("click", startGame);
+  document.getElementById("playAgainBtn").addEventListener("click", startGame);
+
+  startGame();
+})();
+</script>
+</body>
+</html>
