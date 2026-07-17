@@ -1,0 +1,717 @@
+<!-- GAME_INFO
+title: Rock Paper Scissors
+description: Challenge the computer in the classic Rock Paper Scissors game.
+category: Strategy
+icon: ✊
+featured: false
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Rock Paper Scissors | Ananta Games</title>
+<style>
+  :root{
+    --bg-0:#0b0d14;
+    --bg-1:#12151f;
+    --card-bg:rgba(255,255,255,0.05);
+    --card-border:rgba(255,255,255,0.10);
+    --card-border-hover:rgba(255,255,255,0.22);
+    --text-0:#f5f6fa;
+    --text-1:#a7acbd;
+    --text-2:#6b7086;
+    --accent-1:#7c5cff;
+    --accent-2:#ff5cad;
+    --accent-3:#5cd8ff;
+    --win:#4ade80;
+    --lose:#ff6b6b;
+    --draw:#facc15;
+    --radius-lg:24px;
+    --radius-md:16px;
+    --radius-sm:10px;
+    --shadow-lg:0 20px 60px rgba(0,0,0,0.45);
+    --shadow-sm:0 8px 24px rgba(0,0,0,0.35);
+    --transition-fast:180ms cubic-bezier(.4,0,.2,1);
+    --transition-med:320ms cubic-bezier(.4,0,.2,1);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;
+    padding:0;
+    min-height:100%;
+  }
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text-0);
+    background:
+      radial-gradient(circle at 15% 10%, rgba(124,92,255,0.20), transparent 45%),
+      radial-gradient(circle at 85% 15%, rgba(255,92,173,0.16), transparent 45%),
+      radial-gradient(circle at 50% 100%, rgba(92,216,255,0.10), transparent 55%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1));
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    overflow-x:hidden;
+  }
+
+  .app{
+    width:100%;
+    max-width:720px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+
+  header{
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    align-items:center;
+  }
+  .title-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    justify-content:center;
+  }
+  .title-icon{
+    font-size:2.2rem;
+    filter:drop-shadow(0 4px 12px rgba(124,92,255,0.5));
+  }
+  h1{
+    font-size:clamp(1.5rem, 4vw, 2.1rem);
+    margin:0;
+    background:linear-gradient(90deg, var(--accent-3), var(--accent-1) 50%, var(--accent-2));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    font-weight:800;
+    letter-spacing:-0.02em;
+  }
+  .subtitle{
+    color:var(--text-1);
+    font-size:0.95rem;
+    margin:0;
+  }
+
+  .sound-toggle{
+    position:absolute;
+    top:20px;
+    right:20px;
+    background:var(--card-bg);
+    border:1px solid var(--card-border);
+    color:var(--text-0);
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    font-size:1.15rem;
+    transition:transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+    backdrop-filter:blur(12px);
+  }
+  .sound-toggle:hover{
+    border-color:var(--card-border-hover);
+    transform:translateY(-2px);
+    background:rgba(255,255,255,0.09);
+  }
+  .sound-toggle:focus-visible, .btn:focus-visible, .choice-btn:focus-visible{
+    outline:2px solid var(--accent-3);
+    outline-offset:3px;
+  }
+
+  .card{
+    background:var(--card-bg);
+    border:1px solid var(--card-border);
+    border-radius:var(--radius-lg);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+    box-shadow:var(--shadow-lg);
+    padding:24px;
+    transition:border-color var(--transition-med);
+  }
+
+  /* Scoreboard */
+  .scoreboard{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:12px;
+  }
+  .score-cell{
+    text-align:center;
+    padding:14px 8px;
+    border-radius:var(--radius-md);
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--card-border);
+    transition:transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
+  .score-cell.highlight{
+    border-color:var(--win);
+    box-shadow:0 0 0 1px rgba(74,222,128,0.4), 0 8px 24px rgba(74,222,128,0.18);
+    transform:translateY(-2px);
+  }
+  .score-label{
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--text-2);
+    margin-bottom:6px;
+  }
+  .score-value{
+    font-size:1.8rem;
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+  }
+  .score-value.player{ color:var(--accent-3); }
+  .score-value.draw{ color:var(--draw); }
+  .score-value.computer{ color:var(--accent-2); }
+
+  /* Battle area */
+  .battle{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:28px 16px;
+  }
+  .fighter{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+  }
+  .fighter-label{
+    font-size:0.78rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--text-2);
+  }
+  .emoji-slot{
+    width:100px;
+    height:100px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:3.2rem;
+    border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+    border:1px solid var(--card-border);
+    transition:transform var(--transition-med), box-shadow var(--transition-med);
+  }
+  .emoji-slot.reveal{
+    animation:pop 420ms cubic-bezier(.34,1.56,.64,1);
+  }
+  .emoji-slot.win-glow{
+    border-color:var(--win);
+    box-shadow:0 0 0 2px rgba(74,222,128,0.35), 0 0 30px rgba(74,222,128,0.35);
+  }
+  .emoji-slot.lose-glow{
+    border-color:var(--lose);
+    box-shadow:0 0 0 2px rgba(255,107,107,0.3), 0 0 24px rgba(255,107,107,0.25);
+  }
+  @keyframes pop{
+    0%{ transform:scale(0.4) rotate(-15deg); opacity:0; }
+    60%{ transform:scale(1.15) rotate(8deg); opacity:1; }
+    100%{ transform:scale(1) rotate(0deg); }
+  }
+  .vs{
+    font-weight:800;
+    color:var(--text-2);
+    font-size:1rem;
+    letter-spacing:0.05em;
+  }
+
+  .shake{
+    animation:shakeAnim 600ms ease-in-out;
+  }
+  @keyframes shakeAnim{
+    0%,100%{ transform:translateY(0); }
+    20%{ transform:translateY(-6px) rotate(-4deg); }
+    40%{ transform:translateY(0) rotate(4deg); }
+    60%{ transform:translateY(-4px) rotate(-3deg); }
+    80%{ transform:translateY(0) rotate(2deg); }
+  }
+
+  .result-banner{
+    text-align:center;
+    min-height:1.6em;
+    font-size:1.1rem;
+    font-weight:700;
+    letter-spacing:0.01em;
+  }
+  .result-banner.win{ color:var(--win); }
+  .result-banner.lose{ color:var(--lose); }
+  .result-banner.draw{ color:var(--draw); }
+
+  /* Choices */
+  .choices{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:14px;
+    margin-top:6px;
+  }
+  .choice-btn{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+    padding:18px 8px;
+    font-size:2rem;
+    background:linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    border:1px solid var(--card-border);
+    border-radius:var(--radius-md);
+    color:var(--text-0);
+    cursor:pointer;
+    transition:transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .choice-btn .choice-key{
+    font-size:0.68rem;
+    color:var(--text-2);
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+  }
+  .choice-btn:hover{
+    transform:translateY(-4px) scale(1.03);
+    border-color:var(--card-border-hover);
+    box-shadow:var(--shadow-sm);
+    background:linear-gradient(160deg, rgba(124,92,255,0.16), rgba(255,92,173,0.08));
+  }
+  .choice-btn:active{
+    transform:translateY(-1px) scale(0.98);
+  }
+  .choice-btn.selected{
+    border-color:var(--accent-1);
+    box-shadow:0 0 0 2px rgba(124,92,255,0.35);
+  }
+  .choice-btn:disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+    transform:none;
+  }
+
+  /* Action buttons */
+  .actions{
+    display:flex;
+    gap:12px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-top:8px;
+  }
+  .btn{
+    border:none;
+    border-radius:var(--radius-sm);
+    padding:12px 22px;
+    font-size:0.92rem;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--text-0);
+    transition:transform var(--transition-fast), box-shadow var(--transition-fast), filter var(--transition-fast);
+    letter-spacing:0.01em;
+  }
+  .btn-primary{
+    background:linear-gradient(90deg, var(--accent-1), var(--accent-2));
+    box-shadow:0 8px 20px rgba(124,92,255,0.35);
+  }
+  .btn-primary:hover{ transform:translateY(-2px); filter:brightness(1.08); }
+  .btn-ghost{
+    background:rgba(255,255,255,0.04);
+    border:1px solid var(--card-border);
+  }
+  .btn-ghost:hover{
+    border-color:var(--card-border-hover);
+    transform:translateY(-2px);
+    background:rgba(255,255,255,0.08);
+  }
+  .btn:active{ transform:translateY(0); }
+
+  .hint{
+    text-align:center;
+    color:var(--text-2);
+    font-size:0.78rem;
+    margin-top:4px;
+  }
+  .hint kbd{
+    background:rgba(255,255,255,0.08);
+    border:1px solid var(--card-border);
+    border-radius:5px;
+    padding:1px 6px;
+    font-size:0.75rem;
+  }
+
+  /* Celebration confetti */
+  .confetti-layer{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    overflow:hidden;
+    z-index:50;
+  }
+  .confetti-piece{
+    position:absolute;
+    top:-10px;
+    width:8px;
+    height:14px;
+    border-radius:2px;
+    opacity:0.9;
+    animation:confettiFall 1200ms ease-in forwards;
+  }
+  @keyframes confettiFall{
+    to{
+      transform:translateY(110vh) rotate(540deg);
+      opacity:0;
+    }
+  }
+
+  @media (max-width:480px){
+    .emoji-slot{ width:76px; height:76px; font-size:2.3rem; }
+    .choice-btn{ font-size:1.6rem; padding:14px 6px; }
+    .score-value{ font-size:1.4rem; }
+    .card{ padding:18px; }
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *, *::before, *::after{
+      animation-duration:0.001ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:0.001ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<button class="sound-toggle" id="soundToggle" type="button" aria-pressed="true" aria-label="Toggle sound effects">🔊</button>
+
+<main class="app">
+  <header>
+    <div class="title-row">
+      <span class="title-icon" aria-hidden="true">✊</span>
+      <h1>Rock Paper Scissors</h1>
+    </div>
+    <p class="subtitle">Challenge the computer in the classic showdown</p>
+  </header>
+
+  <section class="card scoreboard" aria-label="Scoreboard">
+    <div class="score-cell" id="playerCell">
+      <div class="score-label">You</div>
+      <div class="score-value player" id="playerScore">0</div>
+    </div>
+    <div class="score-cell" id="drawCell">
+      <div class="score-label">Draws</div>
+      <div class="score-value draw" id="drawScore">0</div>
+    </div>
+    <div class="score-cell" id="computerCell">
+      <div class="score-label">Computer</div>
+      <div class="score-value computer" id="computerScore">0</div>
+    </div>
+  </section>
+
+  <section class="card" aria-label="Battle area">
+    <div class="battle">
+      <div class="fighter">
+        <div class="fighter-label">You</div>
+        <div class="emoji-slot" id="playerSlot" aria-live="polite">❔</div>
+      </div>
+      <div class="vs">VS</div>
+      <div class="fighter">
+        <div class="fighter-label">Computer</div>
+        <div class="emoji-slot" id="computerSlot" aria-live="polite">❔</div>
+      </div>
+    </div>
+    <div class="result-banner" id="resultBanner" role="status" aria-live="assertive">Choose your move to begin</div>
+  </section>
+
+  <section class="card" aria-label="Choose your move">
+    <div class="choices" role="group" aria-label="Rock Paper Scissors choices">
+      <button class="choice-btn" data-choice="rock" type="button" aria-label="Rock (keyboard shortcut R)">
+        <span aria-hidden="true">✊</span>
+        <span>Rock</span>
+        <span class="choice-key">R</span>
+      </button>
+      <button class="choice-btn" data-choice="paper" type="button" aria-label="Paper (keyboard shortcut P)">
+        <span aria-hidden="true">✋</span>
+        <span>Paper</span>
+        <span class="choice-key">P</span>
+      </button>
+      <button class="choice-btn" data-choice="scissors" type="button" aria-label="Scissors (keyboard shortcut S)">
+        <span aria-hidden="true">✌️</span>
+        <span>Scissors</span>
+        <span class="choice-key">S</span>
+      </button>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="playAgainBtn" type="button">Play Again <span style="opacity:0.7;font-weight:500;">(Space)</span></button>
+      <button class="btn btn-ghost" id="resetBtn" type="button">Reset Scores</button>
+    </div>
+
+    <p class="hint">Shortcuts: <kbd>R</kbd> Rock · <kbd>P</kbd> Paper · <kbd>S</kbd> Scissors · <kbd>Space</kbd> Play Again</p>
+  </section>
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- State ---------- */
+  const state = {
+    playerScore: 0,
+    computerScore: 0,
+    draws: 0,
+    soundOn: true,
+    lastChoice: null,
+    roundActive: false
+  };
+
+  const CHOICES = ["rock", "paper", "scissors"];
+  const EMOJI = { rock: "✊", paper: "✋", scissors: "✌️" };
+  const BEATS = { rock: "scissors", paper: "rock", scissors: "paper" };
+
+  /* ---------- DOM refs ---------- */
+  const el = {
+    playerScore: document.getElementById("playerScore"),
+    computerScore: document.getElementById("computerScore"),
+    drawScore: document.getElementById("drawScore"),
+    playerCell: document.getElementById("playerCell"),
+    computerCell: document.getElementById("computerCell"),
+    drawCell: document.getElementById("drawCell"),
+    playerSlot: document.getElementById("playerSlot"),
+    computerSlot: document.getElementById("computerSlot"),
+    resultBanner: document.getElementById("resultBanner"),
+    choiceBtns: Array.from(document.querySelectorAll(".choice-btn")),
+    playAgainBtn: document.getElementById("playAgainBtn"),
+    resetBtn: document.getElementById("resetBtn"),
+    soundToggle: document.getElementById("soundToggle")
+  };
+
+  /* ---------- Web Audio ---------- */
+  let audioCtx = null;
+  function getAudioCtx(){
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    return audioCtx;
+  }
+
+  function playTone(freq, duration, type, volume){
+    if (!state.soundOn) return;
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(volume || 0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  }
+
+  const sounds = {
+    select(){ playTone(420, 0.12, "square", 0.08); },
+    win(){
+      playTone(523.25, 0.12, "sine", 0.14);
+      setTimeout(()=>playTone(659.25, 0.14, "sine", 0.14), 110);
+      setTimeout(()=>playTone(783.99, 0.2, "sine", 0.14), 220);
+    },
+    lose(){
+      playTone(220, 0.18, "sawtooth", 0.10);
+      setTimeout(()=>playTone(160, 0.24, "sawtooth", 0.10), 130);
+    },
+    draw(){ playTone(340, 0.16, "triangle", 0.10); }
+  };
+
+  /* ---------- Sound toggle ---------- */
+  el.soundToggle.addEventListener("click", function(){
+    state.soundOn = !state.soundOn;
+    el.soundToggle.textContent = state.soundOn ? "🔊" : "🔇";
+    el.soundToggle.setAttribute("aria-pressed", String(state.soundOn));
+    if (state.soundOn) playTone(500, 0.08, "sine", 0.1);
+  });
+
+  /* ---------- Core game logic ---------- */
+  function randomChoice(){
+    return CHOICES[Math.floor(Math.random() * CHOICES.length)];
+  }
+
+  function decideOutcome(player, computer){
+    if (player === computer) return "draw";
+    return BEATS[player] === computer ? "win" : "lose";
+  }
+
+  function clearGlow(){
+    el.playerSlot.classList.remove("win-glow", "lose-glow");
+    el.computerSlot.classList.remove("win-glow", "lose-glow");
+  }
+
+  function clearHighlights(){
+    el.playerCell.classList.remove("highlight");
+    el.computerCell.classList.remove("highlight");
+    el.drawCell.classList.remove("highlight");
+  }
+
+  function setSelectedButton(choice){
+    el.choiceBtns.forEach(function(btn){
+      btn.classList.toggle("selected", btn.dataset.choice === choice);
+    });
+  }
+
+  function updateScoreboard(){
+    el.playerScore.textContent = state.playerScore;
+    el.computerScore.textContent = state.computerScore;
+    el.drawScore.textContent = state.draws;
+  }
+
+  function spawnConfetti(){
+    const layer = document.createElement("div");
+    layer.className = "confetti-layer";
+    document.body.appendChild(layer);
+    const colors = ["#7c5cff", "#ff5cad", "#5cd8ff", "#4ade80", "#facc15"];
+    const count = 26;
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement("div");
+      piece.className = "confetti-piece";
+      piece.style.left = (Math.random() * 100) + "vw";
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.animationDelay = (Math.random() * 150) + "ms";
+      piece.style.animationDuration = (900 + Math.random() * 500) + "ms";
+      layer.appendChild(piece);
+    }
+    setTimeout(function(){ layer.remove(); }, 1700);
+  }
+
+  function setChoicesDisabled(disabled){
+    el.choiceBtns.forEach(function(btn){ btn.disabled = disabled; });
+  }
+
+  function playRound(playerChoice){
+    if (state.roundActive) return;
+    state.roundActive = true;
+    state.lastChoice = playerChoice;
+
+    sounds.select();
+    setSelectedButton(playerChoice);
+    setChoicesDisabled(true);
+    clearGlow();
+    clearHighlights();
+
+    el.resultBanner.className = "result-banner";
+    el.resultBanner.textContent = "Rock… Paper… Scissors…!";
+
+    el.playerSlot.classList.remove("reveal");
+    el.computerSlot.classList.remove("reveal");
+    el.playerSlot.classList.add("shake");
+    el.computerSlot.classList.add("shake");
+
+    setTimeout(function(){
+      el.playerSlot.classList.remove("shake");
+      el.computerSlot.classList.remove("shake");
+
+      const computerChoice = randomChoice();
+      const outcome = decideOutcome(playerChoice, computerChoice);
+
+      el.playerSlot.textContent = EMOJI[playerChoice];
+      el.computerSlot.textContent = EMOJI[computerChoice];
+      void el.playerSlot.offsetWidth;
+      el.playerSlot.classList.add("reveal");
+      el.computerSlot.classList.add("reveal");
+
+      applyOutcome(outcome, playerChoice, computerChoice);
+      state.roundActive = false;
+      setChoicesDisabled(false);
+    }, 650);
+  }
+
+  function applyOutcome(outcome, playerChoice, computerChoice){
+    let message = "";
+    if (outcome === "win") {
+      state.playerScore++;
+      message = EMOJI[playerChoice] + " beats " + EMOJI[computerChoice] + " — You win!";
+      el.resultBanner.className = "result-banner win";
+      el.playerSlot.classList.add("win-glow");
+      el.computerSlot.classList.add("lose-glow");
+      el.playerCell.classList.add("highlight");
+      sounds.win();
+      spawnConfetti();
+    } else if (outcome === "lose") {
+      state.computerScore++;
+      message = EMOJI[computerChoice] + " beats " + EMOJI[playerChoice] + " — Computer wins!";
+      el.resultBanner.className = "result-banner lose";
+      el.computerSlot.classList.add("win-glow");
+      el.playerSlot.classList.add("lose-glow");
+      el.computerCell.classList.add("highlight");
+      sounds.lose();
+    } else {
+      state.draws++;
+      message = "Both chose " + EMOJI[playerChoice] + " — It's a draw!";
+      el.resultBanner.className = "result-banner draw";
+      el.drawCell.classList.add("highlight");
+      sounds.draw();
+    }
+    el.resultBanner.textContent = message;
+    updateScoreboard();
+  }
+
+  function playAgain(){
+    if (state.roundActive) return;
+    clearGlow();
+    clearHighlights();
+    setSelectedButton(null);
+    el.playerSlot.textContent = "❔";
+    el.computerSlot.textContent = "❔";
+    el.playerSlot.classList.remove("reveal");
+    el.computerSlot.classList.remove("reveal");
+    el.resultBanner.className = "result-banner";
+    el.resultBanner.textContent = "Choose your move to begin";
+  }
+
+  function resetScores(){
+    state.playerScore = 0;
+    state.computerScore = 0;
+    state.draws = 0;
+    updateScoreboard();
+    playAgain();
+  }
+
+  /* ---------- Event wiring ---------- */
+  el.choiceBtns.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      playRound(btn.dataset.choice);
+    });
+  });
+
+  el.playAgainBtn.addEventListener("click", playAgain);
+  el.resetBtn.addEventListener("click", resetScores);
+
+  document.addEventListener("keydown", function(e){
+    if (e.repeat) return;
+    const key = e.key.toLowerCase();
+    if (key === "r") playRound("rock");
+    else if (key === "p") playRound("paper");
+    else if (key === "s") playRound("scissors");
+    else if (e.code === "Space") {
+      e.preventDefault();
+      playAgain();
+    }
+  });
+
+  /* ---------- Init ---------- */
+  updateScoreboard();
+})();
+</script>
+
+</body>
+</html>
