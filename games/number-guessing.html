@@ -1,0 +1,1017 @@
+<!-- GAME_INFO
+title: Number Guessing
+description: Guess the secret number using logical hints with multiple difficulty levels.
+category: Puzzle
+icon: 🔢
+featured: false
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Number Guessing — Ananta Games</title>
+
+<style>
+  /* ============================================================
+     DESIGN TOKENS — matches Ananta Games brand
+     (violet / cyan / amber, dark-first glassmorphism)
+     ============================================================ */
+  :root{
+    --violet:#8B5CF6;
+    --cyan:#06B6D4;
+    --amber:#F59E0B;
+    --green:#22C55E;
+    --red:#EF4444;
+
+    --bg-0:#0B0E17;
+    --bg-1:#11162355;
+    --card-bg:rgba(255,255,255,0.05);
+    --card-border:rgba(255,255,255,0.10);
+    --text-0:#F5F6FA;
+    --text-1:#B6BAC9;
+    --text-2:#7B8098;
+
+    --font-display:'Space Grotesk','Segoe UI',system-ui,sans-serif;
+    --font-body:'Inter','Segoe UI',system-ui,sans-serif;
+
+    --radius-lg:24px;
+    --radius-md:16px;
+    --radius-sm:10px;
+
+    --shadow-glow: 0 0 60px -15px rgba(139,92,246,0.45);
+    color-scheme: dark;
+  }
+
+  [data-theme="light"]{
+    --bg-0:#F4F5FA;
+    --bg-1:#ffffffaa;
+    --card-bg:rgba(255,255,255,0.65);
+    --card-border:rgba(20,20,40,0.08);
+    --text-0:#12131C;
+    --text-1:#4A4E5E;
+    --text-2:#7B8098;
+    --shadow-glow: 0 0 60px -15px rgba(139,92,246,0.25);
+    color-scheme: light;
+  }
+
+  *,*::before,*::after{ box-sizing:border-box; }
+
+  html,body{
+    height:100%;
+    margin:0;
+  }
+
+  body{
+    font-family:var(--font-body);
+    background:
+      radial-gradient(circle at 15% 10%, rgba(139,92,246,0.20), transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(6,182,212,0.18), transparent 45%),
+      var(--bg-0);
+    color:var(--text-0);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:24px 16px 60px;
+    overflow-x:hidden;
+    transition:background 0.4s ease, color 0.4s ease;
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    width:100%;
+    max-width:640px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:20px;
+  }
+  .back-link{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    color:var(--text-1);
+    text-decoration:none;
+    font-size:0.9rem;
+    font-weight:500;
+    padding:8px 14px;
+    border-radius:999px;
+    border:1px solid var(--card-border);
+    background:var(--card-bg);
+    backdrop-filter:blur(10px);
+    transition:all .2s ease;
+  }
+  .back-link:hover{ color:var(--text-0); border-color:var(--violet); transform:translateX(-2px); }
+
+  .theme-toggle{
+    width:40px;height:40px;
+    border-radius:999px;
+    border:1px solid var(--card-border);
+    background:var(--card-bg);
+    backdrop-filter:blur(10px);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    font-size:1.1rem;
+    color:var(--text-0);
+    transition:transform .25s ease, border-color .25s ease;
+  }
+  .theme-toggle:hover{ transform:rotate(15deg) scale(1.05); border-color:var(--amber); }
+
+  /* ---------- header ---------- */
+  .game-header{
+    text-align:center;
+    margin-bottom:26px;
+  }
+  .game-header h1{
+    font-family:var(--font-display);
+    font-size:clamp(1.8rem,5vw,2.6rem);
+    margin:0 0 6px;
+    background:linear-gradient(120deg,var(--violet),var(--cyan) 60%,var(--amber));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    letter-spacing:-0.02em;
+  }
+  .game-header p{
+    margin:0;
+    color:var(--text-1);
+    font-size:0.95rem;
+    max-width:420px;
+  }
+
+  /* ---------- card ---------- */
+  .card{
+    position:relative;
+    width:100%;
+    max-width:520px;
+    background:var(--card-bg);
+    border:1px solid var(--card-border);
+    border-radius:var(--radius-lg);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+    box-shadow:var(--shadow-glow), 0 8px 30px rgba(0,0,0,0.25);
+    padding:28px;
+    animation:cardIn 0.6s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes cardIn{
+    from{ opacity:0; transform:translateY(18px) scale(0.98); }
+    to{ opacity:1; transform:translateY(0) scale(1); }
+  }
+
+  /* ---------- difficulty selector ---------- */
+  .difficulty-row{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:8px;
+    margin-bottom:22px;
+  }
+  .diff-btn{
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:0.82rem;
+    padding:10px 4px;
+    border-radius:var(--radius-sm);
+    border:1px solid var(--card-border);
+    background:rgba(255,255,255,0.03);
+    color:var(--text-1);
+    cursor:pointer;
+    transition:all .2s ease;
+  }
+  .diff-btn small{ display:block; font-weight:400; opacity:0.7; font-size:0.68rem; margin-top:2px;}
+  .diff-btn:hover{ border-color:var(--cyan); color:var(--text-0); transform:translateY(-2px); }
+  .diff-btn.active{
+    color:#fff;
+    border-color:transparent;
+    background:linear-gradient(120deg,var(--violet),var(--cyan));
+    box-shadow:0 6px 18px -4px rgba(139,92,246,0.55);
+  }
+  .diff-btn:focus-visible, .icon-btn:focus-visible, .action-btn:focus-visible, input:focus-visible{
+    outline:2px solid var(--amber);
+    outline-offset:2px;
+  }
+
+  /* ---------- stats strip ---------- */
+  .stats-strip{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:8px;
+    margin-bottom:20px;
+  }
+  .stat-box{
+    text-align:center;
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--card-border);
+    border-radius:var(--radius-sm);
+    padding:10px 4px;
+  }
+  .stat-box .val{
+    font-family:var(--font-display);
+    font-size:1.25rem;
+    font-weight:700;
+    color:var(--text-0);
+    transition:color .2s ease, transform .2s ease;
+  }
+  .stat-box .lbl{
+    font-size:0.65rem;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--text-2);
+    margin-top:2px;
+  }
+  .stat-pulse{ animation:pulseVal .4s ease; }
+  @keyframes pulseVal{
+    0%{ transform:scale(1); }
+    40%{ transform:scale(1.25); color:var(--amber); }
+    100%{ transform:scale(1); }
+  }
+
+  /* ---------- progress bar (attempts remaining) ---------- */
+  .progress-wrap{
+    height:8px;
+    width:100%;
+    border-radius:999px;
+    background:rgba(255,255,255,0.06);
+    overflow:hidden;
+    margin-bottom:22px;
+  }
+  .progress-bar{
+    height:100%;
+    width:100%;
+    border-radius:999px;
+    background:linear-gradient(90deg,var(--green),var(--cyan));
+    transition:width .4s ease, background .4s ease;
+  }
+
+  /* ---------- range hint ---------- */
+  .range-hint{
+    text-align:center;
+    font-size:0.85rem;
+    color:var(--text-2);
+    margin-bottom:14px;
+  }
+  .range-hint strong{ color:var(--text-0); }
+
+  /* ---------- input row ---------- */
+  .input-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  #guessInput{
+    flex:1;
+    font-family:var(--font-display);
+    font-size:1.3rem;
+    text-align:center;
+    padding:14px 10px;
+    border-radius:var(--radius-md);
+    border:1px solid var(--card-border);
+    background:rgba(255,255,255,0.04);
+    color:var(--text-0);
+    -moz-appearance:textfield;
+    transition:border-color .2s ease, box-shadow .2s ease;
+  }
+  #guessInput::-webkit-outer-spin-button,
+  #guessInput::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  #guessInput:focus{
+    border-color:var(--violet);
+    box-shadow:0 0 0 4px rgba(139,92,246,0.18);
+  }
+  #guessInput.shake{ animation:shake .35s ease; }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-8px); }
+    40%{ transform:translateX(8px); }
+    60%{ transform:translateX(-5px); }
+    80%{ transform:translateX(5px); }
+  }
+
+  .action-btn{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:1rem;
+    padding:14px 22px;
+    border-radius:var(--radius-md);
+    border:none;
+    cursor:pointer;
+    color:#fff;
+    background:linear-gradient(120deg,var(--violet),var(--cyan));
+    box-shadow:0 8px 20px -6px rgba(139,92,246,0.6);
+    transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
+    white-space:nowrap;
+  }
+  .action-btn:hover{ transform:translateY(-2px); filter:brightness(1.08); }
+  .action-btn:active{ transform:translateY(0) scale(0.97); }
+  .action-btn:disabled{ opacity:0.5; cursor:not-allowed; transform:none; }
+
+  .secondary-btn{
+    width:100%;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:0.9rem;
+    padding:12px;
+    border-radius:var(--radius-md);
+    border:1px solid var(--card-border);
+    background:rgba(255,255,255,0.03);
+    color:var(--text-1);
+    cursor:pointer;
+    transition:all .2s ease;
+  }
+  .secondary-btn:hover{ color:var(--text-0); border-color:var(--amber); }
+
+  /* ---------- current hint banner ---------- */
+  .hint-banner{
+    text-align:center;
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:1.05rem;
+    padding:14px;
+    border-radius:var(--radius-md);
+    margin-bottom:16px;
+    background:rgba(255,255,255,0.04);
+    border:1px solid var(--card-border);
+    color:var(--text-1);
+    min-height:52px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    transition:all .3s ease;
+  }
+  .hint-banner.high{ color:var(--red); border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.08); }
+  .hint-banner.low{ color:var(--cyan); border-color:rgba(6,182,212,0.4); background:rgba(6,182,212,0.08); }
+  .hint-banner.close{ color:var(--amber); border-color:rgba(245,158,11,0.4); background:rgba(245,158,11,0.08); }
+  .hint-banner.win{ color:var(--green); border-color:rgba(34,197,94,0.4); background:rgba(34,197,94,0.08); }
+
+  /* ---------- previous guesses ---------- */
+  .guess-history{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    max-height:130px;
+    overflow-y:auto;
+    padding:4px 2px;
+    margin-bottom:6px;
+  }
+  .guess-chip{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:0.85rem;
+    padding:6px 12px;
+    border-radius:999px;
+    color:#fff;
+    animation:chipIn .25s ease both;
+    white-space:nowrap;
+  }
+  @keyframes chipIn{
+    from{ opacity:0; transform:scale(0.6); }
+    to{ opacity:1; transform:scale(1); }
+  }
+  .guess-chip.high{ background:linear-gradient(120deg,#EF4444,#B91C1C); }
+  .guess-chip.low{ background:linear-gradient(120deg,#06B6D4,#0E7490); }
+  .guess-chip.close{ background:linear-gradient(120deg,#F59E0B,#B45309); }
+  .guess-chip.win{ background:linear-gradient(120deg,#22C55E,#15803D); }
+
+  /* ---------- overlay (win / lose dialog) ---------- */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(5,6,12,0.72);
+    backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center;
+    z-index:100;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .3s ease;
+    padding:20px;
+  }
+  .overlay.show{ opacity:1; pointer-events:auto; }
+  .dialog{
+    background:var(--card-bg);
+    border:1px solid var(--card-border);
+    border-radius:var(--radius-lg);
+    backdrop-filter:blur(20px);
+    padding:34px 30px;
+    max-width:380px;
+    width:100%;
+    text-align:center;
+    transform:translateY(30px) scale(0.92);
+    transition:transform .35s cubic-bezier(.2,.8,.2,1);
+    box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  }
+  .overlay.show .dialog{ transform:translateY(0) scale(1); }
+  .dialog .emoji{ font-size:3.2rem; margin-bottom:6px; display:block; animation:bounce 0.6s ease; }
+  @keyframes bounce{
+    0%{ transform:scale(0.4) rotate(-10deg); opacity:0;}
+    60%{ transform:scale(1.15) rotate(4deg); opacity:1;}
+    100%{ transform:scale(1) rotate(0); }
+  }
+  .dialog h2{
+    font-family:var(--font-display);
+    font-size:1.6rem;
+    margin:0 0 8px;
+  }
+  .dialog h2.win-title{
+    background:linear-gradient(120deg,var(--green),var(--cyan));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .dialog h2.lose-title{ color:var(--red); }
+  .dialog p{ color:var(--text-1); margin:0 0 18px; font-size:0.95rem; }
+  .dialog .score-row{
+    display:flex; justify-content:space-around; margin-bottom:20px;
+  }
+  .dialog .score-row div{ text-align:center; }
+  .dialog .score-row .val{ font-family:var(--font-display); font-size:1.4rem; font-weight:700; }
+  .dialog .score-row .lbl{ font-size:0.7rem; color:var(--text-2); text-transform:uppercase; letter-spacing:0.04em; }
+  .dialog .dialog-actions{ display:flex; gap:10px; }
+  .dialog .dialog-actions .action-btn{ flex:1; }
+  .new-best-badge{
+    display:inline-block;
+    margin-bottom:10px;
+    padding:4px 12px;
+    border-radius:999px;
+    font-size:0.72rem;
+    font-weight:700;
+    letter-spacing:0.04em;
+    background:linear-gradient(120deg,var(--amber),#fbbf24);
+    color:#1a1200;
+    animation:glowPulse 1.4s ease infinite;
+  }
+  @keyframes glowPulse{
+    0%,100%{ box-shadow:0 0 0 0 rgba(245,158,11,0.5); }
+    50%{ box-shadow:0 0 0 8px rgba(245,158,11,0); }
+  }
+
+  /* ---------- confetti ---------- */
+  .confetti-piece{
+    position:fixed;
+    top:-10px;
+    width:8px;
+    height:14px;
+    z-index:200;
+    pointer-events:none;
+    opacity:0.95;
+    animation-name:confettiFall;
+    animation-timing-function:cubic-bezier(.25,.46,.45,.94);
+    animation-fill-mode:forwards;
+  }
+  @keyframes confettiFall{
+    0%{ transform:translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform:translateY(105vh) rotate(720deg); opacity:0; }
+  }
+
+  /* ---------- footer note ---------- */
+  .footnote{
+    margin-top:18px;
+    text-align:center;
+    font-size:0.78rem;
+    color:var(--text-2);
+  }
+  .footnote kbd{
+    font-family:var(--font-body);
+    background:rgba(255,255,255,0.08);
+    border:1px solid var(--card-border);
+    border-radius:4px;
+    padding:1px 6px;
+  }
+
+  .sr-only{
+    position:absolute; width:1px;height:1px;
+    padding:0; margin:-1px; overflow:hidden;
+    clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
+
+  @media (max-width:480px){
+    .card{ padding:20px; }
+    .difficulty-row{ grid-template-columns:repeat(2,1fr); }
+    .input-row{ flex-direction:column; }
+    .action-btn{ width:100%; }
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back-link" href="../index.html">&larr; Back to Library</a>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark or light theme">🌙</button>
+</div>
+
+<header class="game-header">
+  <h1>🔢 Number Guessing</h1>
+  <p>I'm thinking of a number. Use the hints to zero in before you run out of attempts.</p>
+</header>
+
+<main class="card" role="main">
+
+  <!-- Difficulty selector -->
+  <div class="difficulty-row" role="group" aria-label="Select difficulty">
+    <button class="diff-btn active" data-diff="easy">Easy<small>1–50</small></button>
+    <button class="diff-btn" data-diff="medium">Medium<small>1–100</small></button>
+    <button class="diff-btn" data-diff="hard">Hard<small>1–500</small></button>
+    <button class="diff-btn" data-diff="expert">Expert<small>1–1000</small></button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-strip">
+    <div class="stat-box"><div class="val" id="statAttempts">7</div><div class="lbl">Left</div></div>
+    <div class="stat-box"><div class="val" id="statGuesses">0</div><div class="lbl">Guesses</div></div>
+    <div class="stat-box"><div class="val" id="statTimer">00:00</div><div class="lbl">Time</div></div>
+    <div class="stat-box"><div class="val" id="statBest">—</div><div class="lbl">Best</div></div>
+  </div>
+
+  <div class="progress-wrap" aria-hidden="true">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <p class="range-hint">Guess a number between <strong id="rangeMin">1</strong> and <strong id="rangeMax">50</strong></p>
+
+  <div class="input-row">
+    <label for="guessInput" class="sr-only">Your guess</label>
+    <input type="number" id="guessInput" inputmode="numeric" placeholder="?" autocomplete="off" min="1" max="50">
+    <button class="action-btn" id="guessBtn">Guess</button>
+  </div>
+
+  <div class="hint-banner" id="hintBanner" role="status" aria-live="polite">Pick a difficulty and take your first guess 🎯</div>
+
+  <div class="guess-history" id="guessHistory" aria-label="Previous guesses"></div>
+
+  <button class="secondary-btn" id="newGameBtn">🔄 New Game</button>
+
+  <p class="footnote">Press <kbd>Enter</kbd> to submit your guess &middot; Current score: <strong id="statScore">0</strong></p>
+</main>
+
+<!-- Result dialog (win/lose) -->
+<div class="overlay" id="overlay">
+  <div class="dialog" id="dialog">
+    <span class="emoji" id="dialogEmoji">🎉</span>
+    <div id="newBestBadge" class="new-best-badge" style="display:none;">✨ NEW BEST SCORE</div>
+    <h2 id="dialogTitle" class="win-title">You got it!</h2>
+    <p id="dialogText">The number was 27.</p>
+    <div class="score-row">
+      <div><div class="val" id="dialogScore">0</div><div class="lbl">Score</div></div>
+      <div><div class="val" id="dialogGuesses">0</div><div class="lbl">Guesses</div></div>
+      <div><div class="val" id="dialogTime">00:00</div><div class="lbl">Time</div></div>
+    </div>
+    <div class="dialog-actions">
+      <button class="action-btn" id="dialogPlayAgain">Play Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     THEME — follows the site's data-theme / ananta_theme convention
+     ============================================================ */
+  const ThemeModule = (function(){
+    const STORAGE_KEY = "ananta_theme";
+
+    function apply(theme){
+      document.documentElement.setAttribute("data-theme", theme);
+      const btn = document.getElementById("themeToggle");
+      if (btn) btn.textContent = theme === "dark" ? "🌙" : "☀️";
+    }
+
+    function init(){
+      let saved = null;
+      try { saved = localStorage.getItem(STORAGE_KEY); } catch(e) {}
+      if (saved === "dark" || saved === "light"){
+        apply(saved);
+      } else {
+        const prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+        apply(prefersLight ? "light" : "dark");
+      }
+    }
+
+    function toggle(){
+      const current = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+      const next = current === "light" ? "dark" : "light";
+      apply(next);
+      try { localStorage.setItem(STORAGE_KEY, next); } catch(e) {}
+    }
+
+    return { init, toggle };
+  })();
+
+  /* ============================================================
+     SOUND — generated purely via the Web Audio API, no files
+     ============================================================ */
+  const SoundModule = (function(){
+    let ctx = null;
+    function getCtx(){
+      if (!ctx){
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) ctx = new AC();
+      }
+      return ctx;
+    }
+
+    function tone(freq, duration, type, gainStart, delay){
+      const c = getCtx();
+      if (!c) return;
+      const osc = c.createOscillator();
+      const gain = c.createGain();
+      osc.type = type || "sine";
+      osc.frequency.value = freq;
+      const startTime = c.currentTime + (delay || 0);
+      gain.gain.setValueAtTime(gainStart || 0.15, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      osc.connect(gain);
+      gain.connect(c.destination);
+      osc.start(startTime);
+      osc.stop(startTime + duration + 0.02);
+    }
+
+    return {
+      click(){ tone(420, 0.08, "sine", 0.12); },
+      tooHigh(){ tone(220, 0.18, "sawtooth", 0.10); },
+      tooLow(){ tone(600, 0.18, "sawtooth", 0.10); },
+      close(){ tone(500, 0.12, "triangle", 0.12); tone(650, 0.12, "triangle", 0.10, 0.08); },
+      win(){
+        [523.25, 659.25, 783.99, 1046.5].forEach(function(f, i){
+          tone(f, 0.32, "triangle", 0.14, i * 0.11);
+        });
+      },
+      lose(){
+        [400, 340, 260, 180].forEach(function(f, i){
+          tone(f, 0.28, "sawtooth", 0.12, i * 0.14);
+        });
+      },
+      resume(){ const c = getCtx(); if (c && c.state === "suspended") c.resume(); }
+    };
+  })();
+
+  /* ============================================================
+     CONFETTI — pure CSS/JS particle burst
+     ============================================================ */
+  function fireConfetti(){
+    const colors = ["#8B5CF6", "#06B6D4", "#F59E0B", "#22C55E", "#EF4444", "#FDE047"];
+    const total = 90;
+    for (let i = 0; i < total; i++){
+      const piece = document.createElement("div");
+      piece.className = "confetti-piece";
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.left = (Math.random() * 100) + "vw";
+      piece.style.background = color;
+      piece.style.borderRadius = Math.random() > 0.5 ? "50%" : "2px";
+      const duration = 2.2 + Math.random() * 1.6;
+      piece.style.animationDuration = duration + "s";
+      piece.style.animationDelay = (Math.random() * 0.4) + "s";
+      piece.style.width = (6 + Math.random() * 6) + "px";
+      piece.style.height = (10 + Math.random() * 8) + "px";
+      document.body.appendChild(piece);
+      setTimeout(function(){ piece.remove(); }, (duration + 0.5) * 1000);
+    }
+  }
+
+  /* ============================================================
+     GAME LOGIC
+     ============================================================ */
+  const DIFFICULTIES = {
+    easy:    { min: 1, max: 50,   attempts: 7,  label: "Easy"   },
+    medium:  { min: 1, max: 100,  attempts: 8,  label: "Medium" },
+    hard:    { min: 1, max: 500,  attempts: 10, label: "Hard"   },
+    expert:  { min: 1, max: 1000, attempts: 12, label: "Expert" }
+  };
+  const BEST_KEY_PREFIX = "ananta_number_guessing_best_";
+
+  // DOM refs
+  const els = {
+    diffBtns: Array.prototype.slice.call(document.querySelectorAll(".diff-btn")),
+    rangeMin: document.getElementById("rangeMin"),
+    rangeMax: document.getElementById("rangeMax"),
+    statAttempts: document.getElementById("statAttempts"),
+    statGuesses: document.getElementById("statGuesses"),
+    statTimer: document.getElementById("statTimer"),
+    statBest: document.getElementById("statBest"),
+    statScore: document.getElementById("statScore"),
+    progressBar: document.getElementById("progressBar"),
+    guessInput: document.getElementById("guessInput"),
+    guessBtn: document.getElementById("guessBtn"),
+    hintBanner: document.getElementById("hintBanner"),
+    guessHistory: document.getElementById("guessHistory"),
+    newGameBtn: document.getElementById("newGameBtn"),
+    overlay: document.getElementById("overlay"),
+    dialogEmoji: document.getElementById("dialogEmoji"),
+    dialogTitle: document.getElementById("dialogTitle"),
+    dialogText: document.getElementById("dialogText"),
+    dialogScore: document.getElementById("dialogScore"),
+    dialogGuesses: document.getElementById("dialogGuesses"),
+    dialogTime: document.getElementById("dialogTime"),
+    newBestBadge: document.getElementById("newBestBadge"),
+    dialogPlayAgain: document.getElementById("dialogPlayAgain")
+  };
+
+  const state = {
+    difficulty: "easy",
+    secret: 0,
+    attemptsLeft: 0,
+    guessCount: 0,
+    guesses: [],
+    startTime: null,
+    timerInterval: null,
+    elapsedSeconds: 0,
+    gameOver: false
+  };
+
+  function randomInt(min, max){
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function getBest(diff){
+    try {
+      const v = localStorage.getItem(BEST_KEY_PREFIX + diff);
+      return v ? parseInt(v, 10) : null;
+    } catch(e){ return null; }
+  }
+
+  function setBest(diff, score){
+    try { localStorage.setItem(BEST_KEY_PREFIX + diff, String(score)); } catch(e){}
+  }
+
+  function formatTime(totalSeconds){
+    const m = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
+    const s = Math.floor(totalSeconds % 60).toString().padStart(2, "0");
+    return m + ":" + s;
+  }
+
+  function pulse(el){
+    el.classList.remove("stat-pulse");
+    void el.offsetWidth; // restart animation
+    el.classList.add("stat-pulse");
+  }
+
+  function updateBestDisplay(){
+    const best = getBest(state.difficulty);
+    els.statBest.textContent = best === null ? "—" : best;
+  }
+
+  function updateProgress(){
+    const cfg = DIFFICULTIES[state.difficulty];
+    const pct = Math.max(0, (state.attemptsLeft / cfg.attempts) * 100);
+    els.progressBar.style.width = pct + "%";
+    if (pct <= 25){
+      els.progressBar.style.background = "linear-gradient(90deg,#EF4444,#F59E0B)";
+    } else if (pct <= 55){
+      els.progressBar.style.background = "linear-gradient(90deg,#F59E0B,#06B6D4)";
+    } else {
+      els.progressBar.style.background = "linear-gradient(90deg,#22C55E,#06B6D4)";
+    }
+  }
+
+  function startTimer(){
+    stopTimer();
+    state.startTime = Date.now();
+    state.timerInterval = setInterval(function(){
+      state.elapsedSeconds = (Date.now() - state.startTime) / 1000;
+      els.statTimer.textContent = formatTime(state.elapsedSeconds);
+    }, 250);
+  }
+
+  function stopTimer(){
+    if (state.timerInterval){
+      clearInterval(state.timerInterval);
+      state.timerInterval = null;
+    }
+  }
+
+  function calcScore(cfg){
+    // Reward: fewer guesses, less time, harder difficulty.
+    const difficultyMultiplier = { easy: 1, medium: 1.6, hard: 2.4, expert: 3.2 }[state.difficulty];
+    const attemptsFactor = state.attemptsLeft / cfg.attempts; // 0..1, more left = better
+    const timeFactor = Math.max(0, 1 - (state.elapsedSeconds / 180)); // decays over 3 minutes
+    const base = 1000 * (0.65 + 0.35 * attemptsFactor) * (0.7 + 0.3 * timeFactor);
+    return Math.round(base * difficultyMultiplier);
+  }
+
+  function setActiveDifficultyButton(){
+    els.diffBtns.forEach(function(btn){
+      btn.classList.toggle("active", btn.dataset.diff === state.difficulty);
+    });
+  }
+
+  function resetHintBanner(text){
+    els.hintBanner.className = "hint-banner";
+    els.hintBanner.textContent = text;
+  }
+
+  function renderGuessChip(guessValue, kind){
+    const chip = document.createElement("span");
+    chip.className = "guess-chip " + kind;
+    chip.textContent = guessValue;
+    els.guessHistory.appendChild(chip);
+    els.guessHistory.scrollTop = els.guessHistory.scrollHeight;
+  }
+
+  function classify(guess, secret, range){
+    if (guess === secret) return { kind: "win", text: "🎯 Exactly right!" };
+    const distance = Math.abs(guess - secret);
+    const proximity = distance / range; // 0 = right on top, 1 = max possible distance
+    let closeness;
+    if (proximity < 0.02) closeness = "Extremely close";
+    else if (proximity < 0.06) closeness = "Very close";
+    else if (proximity < 0.18) closeness = "Getting warmer";
+    else closeness = "Far away";
+
+    if (guess > secret){
+      return { kind: "high", text: "📉 Too high — " + closeness };
+    }
+    return { kind: "low", text: "📈 Too low — " + closeness };
+  }
+
+  function newGame(){
+    stopTimer();
+    const cfg = DIFFICULTIES[state.difficulty];
+    state.secret = randomInt(cfg.min, cfg.max);
+    state.attemptsLeft = cfg.attempts;
+    state.guessCount = 0;
+    state.guesses = [];
+    state.elapsedSeconds = 0;
+    state.gameOver = false;
+
+    els.rangeMin.textContent = cfg.min;
+    els.rangeMax.textContent = cfg.max;
+    els.guessInput.min = cfg.min;
+    els.guessInput.max = cfg.max;
+    els.guessInput.value = "";
+    els.guessInput.disabled = false;
+    els.guessBtn.disabled = false;
+
+    els.statAttempts.textContent = state.attemptsLeft;
+    els.statGuesses.textContent = "0";
+    els.statTimer.textContent = "00:00";
+    els.statScore.textContent = "0";
+    els.guessHistory.innerHTML = "";
+
+    updateBestDisplay();
+    updateProgress();
+    resetHintBanner("Pick a number between " + cfg.min + " and " + cfg.max + " and take your first guess 🎯");
+    setActiveDifficultyButton();
+
+    startTimer();
+    els.guessInput.focus();
+  }
+
+  function endGame(won){
+    state.gameOver = true;
+    stopTimer();
+    els.guessInput.disabled = true;
+    els.guessBtn.disabled = true;
+
+    const cfg = DIFFICULTIES[state.difficulty];
+    let score = 0;
+    let isNewBest = false;
+
+    if (won){
+      score = calcScore(cfg);
+      els.statScore.textContent = score;
+      const best = getBest(state.difficulty);
+      if (best === null || score > best){
+        setBest(state.difficulty, score);
+        isNewBest = true;
+      }
+      SoundModule.win();
+      fireConfetti();
+    } else {
+      SoundModule.lose();
+    }
+
+    updateBestDisplay();
+
+    // Populate dialog
+    els.dialogEmoji.textContent = won ? "🏆" : "💥";
+    els.dialogTitle.textContent = won ? "You got it!" : "Out of attempts";
+    els.dialogTitle.className = won ? "win-title" : "lose-title";
+    els.dialogText.textContent = won
+      ? "You found " + state.secret + " in " + state.guessCount + " guess" + (state.guessCount === 1 ? "" : "es") + "."
+      : "The number was " + state.secret + ". Better luck next round!";
+    els.dialogScore.textContent = won ? score : 0;
+    els.dialogGuesses.textContent = state.guessCount;
+    els.dialogTime.textContent = formatTime(state.elapsedSeconds);
+    els.newBestBadge.style.display = (won && isNewBest) ? "inline-block" : "none";
+
+    els.overlay.classList.add("show");
+  }
+
+  function submitGuess(){
+    if (state.gameOver) return;
+    SoundModule.resume();
+
+    const cfg = DIFFICULTIES[state.difficulty];
+    const raw = els.guessInput.value.trim();
+
+    if (raw === "" || isNaN(raw)){
+      els.guessInput.classList.remove("shake");
+      void els.guessInput.offsetWidth;
+      els.guessInput.classList.add("shake");
+      resetHintBanner("⚠️ Enter a valid number first.");
+      return;
+    }
+
+    const guess = Math.round(Number(raw));
+
+    if (guess < cfg.min || guess > cfg.max){
+      els.guessInput.classList.remove("shake");
+      void els.guessInput.offsetWidth;
+      els.guessInput.classList.add("shake");
+      resetHintBanner("⚠️ Stay within " + cfg.min + "–" + cfg.max + ".");
+      return;
+    }
+
+    if (state.guesses.indexOf(guess) !== -1){
+      resetHintBanner("🔁 You already tried " + guess + " — pick a new number.");
+      return;
+    }
+
+    state.guesses.push(guess);
+    state.guessCount++;
+    els.statGuesses.textContent = state.guessCount;
+    pulse(els.statGuesses);
+
+    const range = cfg.max - cfg.min;
+    const result = classify(guess, state.secret, range);
+    renderGuessChip(guess, result.kind);
+
+    if (result.kind === "win"){
+      els.hintBanner.className = "hint-banner win";
+      els.hintBanner.textContent = result.text;
+      endGame(true);
+      return;
+    }
+
+    if (result.kind === "high") SoundModule.tooHigh();
+    else SoundModule.tooLow();
+    if (result.text.indexOf("close") !== -1) SoundModule.close();
+
+    els.hintBanner.className = "hint-banner " + (result.kind === "high" ? "high" : "low");
+    els.hintBanner.textContent = result.text;
+
+    state.attemptsLeft--;
+    els.statAttempts.textContent = state.attemptsLeft;
+    pulse(els.statAttempts);
+    updateProgress();
+
+    els.guessInput.value = "";
+    els.guessInput.focus();
+
+    if (state.attemptsLeft <= 0){
+      endGame(false);
+    }
+  }
+
+  /* ============================================================
+     EVENT WIRING
+     ============================================================ */
+  els.diffBtns.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      SoundModule.click();
+      state.difficulty = btn.dataset.diff;
+      newGame();
+    });
+  });
+
+  els.guessBtn.addEventListener("click", submitGuess);
+
+  els.guessInput.addEventListener("keydown", function(e){
+    if (e.key === "Enter"){
+      e.preventDefault();
+      submitGuess();
+    }
+  });
+
+  els.newGameBtn.addEventListener("click", function(){
+    SoundModule.click();
+    newGame();
+  });
+
+  els.dialogPlayAgain.addEventListener("click", function(){
+    SoundModule.click();
+    els.overlay.classList.remove("show");
+    newGame();
+  });
+
+  els.overlay.addEventListener("click", function(e){
+    if (e.target === els.overlay){
+      els.overlay.classList.remove("show");
+      newGame();
+    }
+  });
+
+  document.getElementById("themeToggle").addEventListener("click", ThemeModule.toggle);
+
+  /* ============================================================
+     INIT
+     ============================================================ */
+  ThemeModule.init();
+  newGame();
+
+})();
+</script>
+
+</body>
+</html>
